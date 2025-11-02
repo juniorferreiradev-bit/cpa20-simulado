@@ -1,4 +1,3 @@
-javascript
 import { useState } from 'react';
 import { useRouter } from 'next/router';
 import { collection, query, where, getDocs } from 'firebase/firestore';

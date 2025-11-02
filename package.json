@@ -1,4 +1,3 @@
-```json
 {
   "name": "cpa20-simulado",
   "version": "1.0.0",
@@ -14,4 +13,3 @@
     "firebase": "^10.0.0"
   }
 }
-```
