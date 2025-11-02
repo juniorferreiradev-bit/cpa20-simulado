@@ -1,4 +1,4 @@
-```javascript
+javascript
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { collection, getDocs } from 'firebase/firestore';
@@ -176,4 +176,3 @@ export default function Simulado() {
     </div>
   );
 }
-```
