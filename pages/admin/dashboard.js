@@ -1,27 +1,45 @@
 import { useState, useEffect } from 'react';
-import { collection, getDocs, addDoc, deleteDoc, doc } from 'firebase/firestore';
+import { useRouter } from 'next/router';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
 export default function AdminDashboard() {
   const [questoes, setQuestoes] = useState([]);
+  const [filtro, setFiltro] = useState('');
+  const [aba, setAba] = useState('dashboard'); // dashboard, questoes, criar
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  // Form para criar/editar
   const [novaQuestao, setNovaQuestao] = useState({
     enunciado: '',
     opcoes: { A: '', B: '', C: '', D: '', E: '' },
     resposta: 'A',
     modulo: '1'
   });
+  const [editandoId, setEditandoId] = useState(null);
 
   useEffect(() => {
+    if (!localStorage.getItem('admin_logado')) {
+      router.push('/admin');
+      return;
+    }
     carregarQuestoes();
   }, []);
 
   const carregarQuestoes = async () => {
-    const q = [];
-    const querySnapshot = await getDocs(collection(db, 'questoes'));
-    querySnapshot.forEach((doc) => {
-      q.push({ id: doc.id, ...doc.data() });
-    });
-    setQuestoes(q);
+    try {
+      const querySnapshot = await getDocs(collection(db, 'questoes'));
+      const q = [];
+      querySnapshot.forEach((doc) => {
+        q.push({ id: doc.id, ...doc.data() });
+      });
+      setQuestoes(q);
+      setLoading(false);
+    } catch (err) {
+      console.error('Erro:', err);
+      setLoading(false);
+    }
   };
 
   const adicionarQuestao = async () => {
@@ -29,118 +47,358 @@ export default function AdminDashboard() {
       alert('Preencha o enunciado');
       return;
     }
+
     try {
-      await addDoc(collection(db, 'questoes'), novaQuestao);
+      if (editandoId) {
+        // Editar
+        await updateDoc(doc(db, 'questoes', editandoId), novaQuestao);
+        alert('✅ Questão atualizada!');
+        setEditandoId(null);
+      } else {
+        // Criar
+        await addDoc(collection(db, 'questoes'), novaQuestao);
+        alert('✅ Questão criada!');
+      }
+
       setNovaQuestao({
         enunciado: '',
         opcoes: { A: '', B: '', C: '', D: '', E: '' },
         resposta: 'A',
         modulo: '1'
       });
+
       carregarQuestoes();
-      alert('Questão adicionada!');
+      setAba('questoes');
     } catch (err) {
-      alert('Erro ao adicionar: ' + err.message);
+      alert('❌ Erro: ' + err.message);
     }
+  };
+
+  const editarQuestao = (q) => {
+    setNovaQuestao(q);
+    setEditandoId(q.id);
+    setAba('criar');
   };
 
   const deletarQuestao = async (id) => {
-    if (confirm('Tem certeza?')) {
-      await deleteDoc(doc(db, 'questoes', id));
-      carregarQuestoes();
+    if (confirm('Tem certeza que deseja deletar?')) {
+      try {
+        await deleteDoc(doc(db, 'questoes', id));
+        alert('✅ Questão deletada!');
+        carregarQuestoes();
+      } catch (err) {
+        alert('❌ Erro: ' + err.message);
+      }
     }
   };
 
+  const sair = () => {
+    localStorage.removeItem('admin_logado');
+    router.push('/admin');
+  };
+
+  // Estatísticas
+  const totalQuestoes = questoes.length;
+  const porModulo = {};
+  questoes.forEach(q => {
+    porModulo[q.modulo] = (porModulo[q.modulo] || 0) + 1;
+  });
+
   return (
-    <div style={{ maxWidth: '1000px', margin: '50px auto', padding: '20px' }}>
-      <h1>🔧 Painel Admin - CPA-20</h1>
-
-      <div style={{ background: '#f5f5f5', padding: '20px', borderRadius: '10px', marginBottom: '20px' }}>
-        <h2>➕ Adicionar Nova Questão</h2>
-        <input
-          type="text"
-          placeholder="Enunciado"
-          value={novaQuestao.enunciado}
-          onChange={(e) => setNovaQuestao({ ...novaQuestao, enunciado: e.target.value })}
-          style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
-        />
-
-        {Object.entries(novaQuestao.opcoes).map(([letra, texto]) => (
-          <div key={letra}>
-            <label>{letra}:</label>
-            <input
-              type="text"
-              value={texto}
-              onChange={(e) =>
-                setNovaQuestao({
-                  ...novaQuestao,
-                  opcoes: { ...novaQuestao.opcoes, [letra]: e.target.value }
-                })
-              }
-              style={{ width: '100%', padding: '10px', marginBottom: '10px' }}
-            />
-          </div>
-        ))}
-
-        <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
-          <div>
-            <label>Resposta Correta:</label>
-            <select
-              value={novaQuestao.resposta}
-              onChange={(e) => setNovaQuestao({ ...novaQuestao, resposta: e.target.value })}
-            >
-              <option>A</option>
-              <option>B</option>
-              <option>C</option>
-              <option>D</option>
-              <option>E</option>
-            </select>
-          </div>
-
-          <div>
-            <label>Módulo:</label>
-            <select
-              value={novaQuestao.modulo}
-              onChange={(e) => setNovaQuestao({ ...novaQuestao, modulo: e.target.value })}
-            >
-              {Array.from({ length: 6 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  Módulo {i + 1}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-
+    <div style={{ minHeight: '100vh', background: '#f5f5f5' }}>
+      {/* HEADER */}
+      <div style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <h1>🎓 Admin - CPA-20 Simulado</h1>
         <button
-          onClick={adicionarQuestao}
-          style={{ width: '100%', padding: '10px', background: '#4caf50', color: 'white' }}
+          onClick={sair}
+          style={{ background: 'white', color: '#667eea', padding: '10px 20px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' }}
         >
-          Adicionar Questão
+          🚪 Sair
         </button>
       </div>
 
-      <h2>📋 Questões ({questoes.length})</h2>
-      {questoes.map((q) => (
-        <div
-          key={q.id}
+      {/* ABAS */}
+      <div style={{ display: 'flex', gap: '10px', padding: '20px', background: 'white', borderBottom: '2px solid #ddd' }}>
+        <button
+          onClick={() => setAba('dashboard')}
           style={{
-            border: '1px solid #ddd',
-            padding: '15px',
-            marginBottom: '10px',
-            borderRadius: '5px'
+            padding: '10px 20px',
+            background: aba === 'dashboard' ? '#667eea' : '#ddd',
+            color: aba === 'dashboard' ? 'white' : 'black',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
           }}
         >
-          <p><strong>{q.enunciado}</strong></p>
-          <p>Resposta: <strong>{q.resposta}</strong> | Módulo: {q.modulo}</p>
-          <button
-            onClick={() => deletarQuestao(q.id)}
-            style={{ background: '#f44336', color: 'white', padding: '5px 10px' }}
-          >
-            🗑️ Deletar
-          </button>
-        </div>
-      ))}
+          📊 Dashboard
+        </button>
+        <button
+          onClick={() => setAba('questoes')}
+          style={{
+            padding: '10px 20px',
+            background: aba === 'questoes' ? '#667eea' : '#ddd',
+            color: aba === 'questoes' ? 'white' : 'black',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          📋 Questões ({totalQuestoes})
+        </button>
+        <button
+          onClick={() => setAba('criar')}
+          style={{
+            padding: '10px 20px',
+            background: aba === 'criar' ? '#667eea' : '#ddd',
+            color: aba === 'criar' ? 'white' : 'black',
+            border: 'none',
+            borderRadius: '5px',
+            cursor: 'pointer',
+            fontWeight: 'bold'
+          }}
+        >
+          ➕ {editandoId ? 'Editando' : 'Criar'}
+        </button>
+      </div>
+
+      {/* CONTEÚDO */}
+      <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
+        {/* DASHBOARD */}
+        {aba === 'dashboard' && (
+          <div>
+            <h2>📊 Estatísticas</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '20px' }}>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ color: '#667eea' }}>📝 Total de Questões</h3>
+                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>{totalQuestoes}</p>
+              </div>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ color: '#667eea' }}>📚 Módulos</h3>
+                <p style={{ fontSize: '32px', fontWeight: 'bold', color: '#333' }}>{Object.keys(porModulo).length}</p>
+              </div>
+              <div style={{ background: 'white', padding: '20px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+                <h3 style={{ color: '#667eea' }}>⚡ Status</h3>
+                <p style={{ fontSize: '18px', fontWeight: 'bold', color: '#4caf50' }}>✅ Sistema Operacional</p>
+              </div>
+            </div>
+
+            <div style={{ background: 'white', padding: '20px', borderRadius: '10px', marginTop: '20px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              <h3>Questões por Módulo</h3>
+              {Object.entries(porModulo).map(([modulo, qtd]) => (
+                <div key={modulo} style={{ display: 'flex', justifyContent: 'space-between', padding: '10px', borderBottom: '1px solid #eee' }}>
+                  <span>Módulo {modulo}</span>
+                  <strong>{qtd} questões</strong>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* QUESTÕES */}
+        {aba === 'questoes' && (
+          <div>
+            <h2>📋 Gerenciar Questões</h2>
+            <input
+              type="text"
+              placeholder="🔍 Filtrar por enunciado..."
+              value={filtro}
+              onChange={(e) => setFiltro(e.target.value)}
+              style={{
+                width: '100%',
+                padding: '10px',
+                marginBottom: '20px',
+                border: '2px solid #ddd',
+                borderRadius: '5px'
+              }}
+            />
+
+            <div style={{ background: 'white', borderRadius: '10px', overflow: 'hidden', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+              {questoes
+                .filter(q => q.enunciado.toLowerCase().includes(filtro.toLowerCase()))
+                .map((q, idx) => (
+                  <div
+                    key={q.id}
+                    style={{
+                      padding: '15px',
+                      borderBottom: idx < questoes.length - 1 ? '1px solid #eee' : 'none',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <p><strong>{q.enunciado.substring(0, 100)}...</strong></p>
+                      <p style={{ color: '#999', fontSize: '12px' }}>ID: {q.id} | Módulo: {q.modulo} | Resposta: {q.resposta}</p>
+                    </div>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                      <button
+                        onClick={() => editarQuestao(q)}
+                        style={{
+                          padding: '8px 15px',
+                          background: '#4caf50',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        ✏️ Editar
+                      </button>
+                      <button
+                        onClick={() => deletarQuestao(q.id)}
+                        style={{
+                          padding: '8px 15px',
+                          background: '#f44336',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '5px',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        🗑️ Deletar
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* CRIAR/EDITAR */}
+        {aba === 'criar' && (
+          <div style={{ background: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
+            <h2>{editandoId ? '✏️ Editar Questão' : '➕ Criar Nova Questão'}</h2>
+
+            <div style={{ marginTop: '20px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Enunciado:</label>
+              <textarea
+                value={novaQuestao.enunciado}
+                onChange={(e) => setNovaQuestao({ ...novaQuestao, enunciado: e.target.value })}
+                style={{
+                  width: '100%',
+                  height: '100px',
+                  padding: '10px',
+                  border: '2px solid #ddd',
+                  borderRadius: '5px',
+                  fontFamily: 'Arial',
+                  fontSize: '14px'
+                }}
+              />
+            </div>
+
+            {['A', 'B', 'C', 'D', 'E'].map(letra => (
+              <div key={letra} style={{ marginTop: '15px' }}>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Opção {letra}:</label>
+                <input
+                  type="text"
+                  value={novaQuestao.opcoes[letra]}
+                  onChange={(e) =>
+                    setNovaQuestao({
+                      ...novaQuestao,
+                      opcoes: { ...novaQuestao.opcoes, [letra]: e.target.value }
+                    })
+                  }
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #ddd',
+                    borderRadius: '5px'
+                  }}
+                />
+              </div>
+            ))}
+
+            <div style={{ marginTop: '15px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Resposta Correta:</label>
+                <select
+                  value={novaQuestao.resposta}
+                  onChange={(e) => setNovaQuestao({ ...novaQuestao, resposta: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #ddd',
+                    borderRadius: '5px'
+                  }}
+                >
+                  <option>A</option>
+                  <option>B</option>
+                  <option>C</option>
+                  <option>D</option>
+                  <option>E</option>
+                </select>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 'bold' }}>Módulo:</label>
+                <select
+                  value={novaQuestao.modulo}
+                  onChange={(e) => setNovaQuestao({ ...novaQuestao, modulo: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '10px',
+                    border: '2px solid #ddd',
+                    borderRadius: '5px'
+                  }}
+                >
+                  {Array.from({ length: 6 }, (_, i) => (
+                    <option key={i + 1} value={i + 1}>
+                      Módulo {i + 1}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div style={{ marginTop: '30px', display: 'flex', gap: '15px' }}>
+              <button
+                onClick={adicionarQuestao}
+                style={{
+                  flex: 1,
+                  padding: '15px',
+                  background: '#4caf50',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '5px',
+                  fontSize: '16px',
+                  fontWeight: 'bold',
+                  cursor: 'pointer'
+                }}
+              >
+                {editandoId ? '💾 Salvar Alterações' : '➕ Criar Questão'}
+              </button>
+              {editandoId && (
+                <button
+                  onClick={() => {
+                    setEditandoId(null);
+                    setNovaQuestao({
+                      enunciado: '',
+                      opcoes: { A: '', B: '', C: '', D: '', E: '' },
+                      resposta: 'A',
+                      modulo: '1'
+                    });
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '15px',
+                    background: '#999',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '5px',
+                    fontSize: '16px',
+                    fontWeight: 'bold',
+                    cursor: 'pointer'
+                  }}
+                >
+                  ❌ Cancelar
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
