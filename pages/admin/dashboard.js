@@ -198,3 +198,78 @@ export default function Dashboard() {
     </div>
   );
 }
+const processarCSV = (e) => {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  setCsvFile(file);
+  const reader = new FileReader();
+
+  reader.onload = (event) => {
+    const text = event.target.result;
+    const linhas = text.split('\n');
+    
+    const questoesProcessadas = [];
+    const erros = [];
+
+    // Pular cabeçalho
+    for (let i = 1; i < linhas.length; i++) {
+      const linha = linhas[i].trim();
+      if (!linha) continue;
+
+      try {
+        const colunas = parseCSVLine(linha);
+        
+        // NOVO: Formato flexível para A-D ou A-E
+        // ID,Enunciado,Opcao_A,Opcao_B,Opcao_C,Opcao_D,Opcao_E,Resposta_Correta,Modulo,Imagem_URL
+        
+        if (colunas.length < 8) {
+          erros.push(`Linha ${i + 1}: Colunas insuficientes (mínimo: ID até Resposta_Correta)`);
+          continue;
+        }
+
+        const questao = {
+          id: colunas[0] || `Q${i}`,
+          enunciado: colunas[1] || '',
+          opcoes: {},
+          resposta: colunas[7] || 'A',
+          modulo: colunas[8] || '1',
+          imagemUrl: colunas[9] || '' // NOVO: Suporte a imagem
+        };
+
+        // Adicionar opções dinamicamente (A-D obrigatórias, E opcional)
+        ['A', 'B', 'C', 'D', 'E'].forEach((letra, idx) => {
+          const valor = colunas[2 + idx];
+          if (valor && valor.trim()) {
+            questao.opcoes[letra] = valor.trim();
+          }
+        });
+
+        // Validação
+        if (!questao.enunciado) {
+          erros.push(`Linha ${i + 1}: Enunciado vazio`);
+          continue;
+        }
+
+        if (Object.keys(questao.opcoes).length < 2) {
+          erros.push(`Linha ${i + 1}: Mínimo 2 opções necessárias`);
+          continue;
+        }
+
+        if (!questao.opcoes[questao.resposta]) {
+          erros.push(`Linha ${i + 1}: Resposta ${questao.resposta} não existe nas opções`);
+          continue;
+        }
+
+        questoesProcessadas.push(questao);
+      } catch (err) {
+        erros.push(`Linha ${i + 1}: Erro ao processar - ${err.message}`);
+      }
+    }
+
+    setCsvQuestoes(questoesProcessadas);
+    setCsvErros(erros);
+  };
+
+  reader.readAsText(file);
+};
