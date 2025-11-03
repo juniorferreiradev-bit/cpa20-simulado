@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useState, useEffect } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, writeBatch } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 
@@ -120,8 +120,8 @@ export default function AdminDashboard() {
           // Parse CSV (considerando vírgulas dentro de aspas)
           const colunas = parseCSVLine(linha);
           
-          if (colunas.length < 8) {
-            erros.push(`Linha ${i + 1}: Colunas insuficientes`);
+          if (colunas.length < 6) {
+            erros.push(`Linha ${i + 1}: Colunas insuficientes (mínimo 6)`);
             continue;
           }
 
@@ -132,11 +132,11 @@ export default function AdminDashboard() {
               A: colunas[2] || '',
               B: colunas[3] || '',
               C: colunas[4] || '',
-              D: colunas[5] || '',
-              E: colunas[6] || ''
+              D: colunas[5] || ''
             },
-            resposta: colunas[7] || 'A',
-            modulo: colunas[8] || '1'
+            resposta: colunas[6] || 'A',
+            modulo: colunas[7] || '1',
+            imagemURL: colunas[9] || ''
           };
 
           // Validação
@@ -145,8 +145,8 @@ export default function AdminDashboard() {
             continue;
           }
 
-          if (!['A', 'B', 'C', 'D', 'E'].includes(questao.resposta)) {
-            erros.push(`Linha ${i + 1}: Resposta inválida (${questao.resposta})`);
+          if (!['A', 'B', 'C', 'D'].includes(questao.resposta)) {
+            erros.push(`Linha ${i + 1}: Resposta inválida (${questao.resposta}) - deve ser A, B, C ou D`);
             continue;
           }
 
@@ -209,7 +209,8 @@ export default function AdminDashboard() {
             enunciado: questao.enunciado,
             opcoes: questao.opcoes,
             resposta: questao.resposta,
-            modulo: questao.modulo
+            modulo: questao.modulo,
+            imagemURL: questao.imagemURL || null
           });
           sucessos++;
         } catch (err) {
@@ -379,7 +380,10 @@ export default function AdminDashboard() {
           <div style={{ background: 'white', padding: '30px', borderRadius: '10px', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>
             <h2>📤 Importar Questões via CSV</h2>
             <p style={{ color: '#666', marginBottom: '20px' }}>
-              Formato esperado: <strong>ID,Enunciado,Opcao_A,Opcao_B,Opcao_C,Opcao_D,Opcao_E,Resposta_Correta,Modulo</strong>
+              Formato esperado: <strong>ID,Enunciado,Opcao_A,Opcao_B,Opcao_C,Opcao_D,Resposta_Correta,Modulo,Ativa,Imagem_URL</strong>
+            </p>
+            <p style={{ color: '#999', fontSize: '12px', marginBottom: '20px' }}>
+              ℹ️ Opção E não é obrigatória | Imagem_URL é opcional
             </p>
 
             <div style={{ border: '2px dashed #ddd', padding: '40px', textAlign: 'center', borderRadius: '10px', marginBottom: '20px' }}>
