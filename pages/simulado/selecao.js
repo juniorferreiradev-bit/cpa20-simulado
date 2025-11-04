@@ -9,19 +9,21 @@ export default function SelecaoSimulado() {
   const router = useRouter();
 
   useEffect(() => {
+    if (!localStorage.getItem('usuario_email')) {
+      router.push('/');
+      return;
+    }
     carregarSimulados();
   }, []);
 
   const carregarSimulados = async () => {
     try {
-      // Buscar questões e agrupar por simulado
       const q = query(collection(db, 'questoes'), where('ativa', '==', 'SIM'));
       const snapshot = await getDocs(q);
       
       const simulados = {};
       snapshot.forEach((doc) => {
         const questao = doc.data();
-        // Extrair código do simulado (ex: S1Q1 -> S1)
         const simuladoCod = questao.id.match(/^S\d+/)?.[0];
         
         if (simuladoCod) {
@@ -36,19 +38,19 @@ export default function SelecaoSimulado() {
         }
       });
 
-      setSimuladosDisponiveis(Object.values(simulados));
+      setSimuladosDisponiveis(Object.values(simulados).sort((a, b) => a.codigo.localeCompare(b.codigo)));
       setLoading(false);
     } catch (err) {
-      console.error('Erro ao carregar simulados:', err);
+      console.error('Erro:', err);
       setLoading(false);
     }
   };
 
   const iniciarSimulado = (tipo, codigo = null) => {
     if (tipo === 'especifico' && codigo) {
-      router.push(`/simulado/especifico?codigo=${codigo}`);
+      router.push(`/simulado/[tipo]?tipo=${tipo}&codigo=${codigo}`);
     } else if (tipo === 'aleatorio') {
-      router.push('/simulado/aleatorio');
+      router.push(`/simulado/[tipo]?tipo=aleatorio`);
     }
   };
 
@@ -66,21 +68,20 @@ export default function SelecaoSimulado() {
       <div className="header-selecao">
         <h1>📚 Escolha seu Simulado</h1>
         <p>Selecione o tipo de simulado que deseja realizar</p>
+        <button className="btn-voltar" onClick={() => router.push('/dashboard')}>
+          ← Voltar ao Dashboard
+        </button>
       </div>
 
       <div className="opcoes-grid">
         {/* OPÇÃO 1: ALEATÓRIO */}
-        <div className="card-opcao card-aleatorio" onClick={() => iniciarSimulado('aleatorio')}>
+        <div className="card-opcao card-aleatorio">
           <div className="card-icon">🎲</div>
           <h2>Questões Aleatórias</h2>
           <p className="card-descricao">
             60 questões selecionadas aleatoriamente de todos os módulos
           </p>
-          <div className="card-info">
-            <span className="badge badge-info">10 questões por módulo</span>
-            <span className="badge badge-warning">Ordem embaralhada</span>
-          </div>
-          <button className="btn btn-primary btn-full">
+          <button className="btn btn-primary btn-full" onClick={() => iniciarSimulado('aleatorio')}>
             Iniciar Simulado Aleatório
           </button>
         </div>
@@ -134,6 +135,21 @@ export default function SelecaoSimulado() {
         .header-selecao p {
           font-size: 18px;
           opacity: 0.9;
+          margin-bottom: 20px;
+        }
+
+        .btn-voltar {
+          background: rgba(255,255,255,0.2);
+          color: white;
+          border: 2px solid white;
+          padding: 10px 20px;
+          border-radius: 5px;
+          cursor: pointer;
+          font-weight: bold;
+        }
+
+        .btn-voltar:hover {
+          background: rgba(255,255,255,0.3);
         }
 
         .opcoes-grid {
@@ -174,35 +190,12 @@ export default function SelecaoSimulado() {
           margin-bottom: 25px;
         }
 
-        .card-info {
-          display: flex;
-          gap: 10px;
-          justify-content: center;
-          margin-bottom: 25px;
-          flex-wrap: wrap;
-        }
-
-        .badge {
-          padding: 6px 12px;
-          border-radius: 20px;
-          font-size: 12px;
-          font-weight: bold;
-        }
-
-        .badge-info {
-          background: #e3f2fd;
-          color: #1976d2;
-        }
-
-        .badge-warning {
-          background: #fff3e0;
-          color: #f57c00;
-        }
-
         .lista-simulados {
           display: flex;
           flex-direction: column;
           gap: 15px;
+          max-height: 400px;
+          overflow-y: auto;
         }
 
         .item-simulado {

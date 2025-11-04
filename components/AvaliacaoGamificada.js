@@ -1,26 +1,42 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 export default function AvaliacaoGamificada({ nota }) {
   const [mostrarConfetti, setMostrarConfetti] = useState(false);
-  
-  // Calcular estrelas (0-5)
+
   const estrelas = Math.round((nota / 100) * 5);
-  
-  // Se 5 estrelas, mostrar confetti
-  if (estrelas === 5 && !mostrarConfetti) {
-    setMostrarConfetti(true);
-    setTimeout(() => launchConfetti(), 500);
-  }
+
+  useEffect(() => {
+    if (estrelas === 5 && !mostrarConfetti) {
+      setMostrarConfetti(true);
+      launchConfetti();
+    }
+  }, [estrelas, mostrarConfetti]);
 
   const launchConfetti = () => {
-    // Usar biblioteca confetti-js ou canvas-confetti
-    if (window.confetti) {
-      window.confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 }
-      });
+    if (typeof window !== 'undefined') {
+      const script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js';
+      script.onload = () => {
+        if (window.confetti) {
+          window.confetti({
+            particleCount: 200,
+            spread: 100,
+            origin: { y: 0.5 },
+            duration: 3000
+          });
+        }
+      };
+      document.body.appendChild(script);
     }
+  };
+
+  const mensagens = {
+    5: '🎉 Excelente! Você dominou o conteúdo!',
+    4: '👏 Muito bom! Continue assim!',
+    3: '💪 Bom trabalho! Pode melhorar!',
+    2: '📚 Continue estudando!',
+    1: '📖 Revise o material!',
+    0: '⚠️ Recomendamos revisar todo o conteúdo'
   };
 
   return (
@@ -35,16 +51,11 @@ export default function AvaliacaoGamificada({ nota }) {
           </span>
         ))}
       </div>
-      
+
       <div className="nota-valor">{nota}%</div>
-      
+
       <div className="mensagem">
-        {estrelas === 5 && '🎉 Excelente! Você dominou o conteúdo!'}
-        {estrelas === 4 && '👏 Muito bom! Continue assim!'}
-        {estrelas === 3 && '💪 Bom trabalho! Pode melhorar!'}
-        {estrelas === 2 && '📚 Continue estudando!'}
-        {estrelas === 1 && '📖 Revise o material!'}
-        {estrelas === 0 && '⚠️ Recomendamos revisar todo o conteúdo'}
+        {mensagens[estrelas] || mensagens[0]}
       </div>
 
       {estrelas >= 3 && (

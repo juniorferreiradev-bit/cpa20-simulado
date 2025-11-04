@@ -18,15 +18,14 @@ export default function ModalCreditos({ onClose }) {
       if (docSnap.exists()) {
         setConfig(docSnap.data());
       } else {
-        // Config padrão
         setConfig({
-          desenvolvedor: 'Seu Nome',
-          usouIA: 'Sim - Claude AI',
+          desenvolvedor: 'Junior Ferreira',
+          usouIA: 'Claude 3.7 Sonnet',
           autorConteudo: 'Edgar Abreu',
-          direitos: 'Todo o conteúdo das questões é de propriedade de Edgar Abreu',
-          finalidade: 'Sem fins lucrativos - Uso educacional',
+          direitos: 'Todo o conteúdo das questões é de propriedade intelectual de Edgar Abreu',
+          finalidade: 'Sem fins lucrativos - Uso educacional apenas',
           doacoesTexto: 'Doações são bem-vindas e ajudam a manter o projeto',
-          pixChave: 'seupix@email.com',
+          pixChave: 'juniorferreira.dev@gmail.com',
           versaoSistema: '9.0',
           dataAtualizacao: new Date().toLocaleDateString('pt-BR')
         });
@@ -55,14 +54,14 @@ export default function ModalCreditos({ onClose }) {
       <div className="modal-creditos">
         <div className="modal-header">
           <h1>🎓 Sistema CPA-20 Simulação</h1>
-          <div className="versao">Versão {config.versaoSistema} • {config.dataAtualizacao}</div>
+          <div className="versao">Versão {config.versaoSistema}</div>
         </div>
 
         <div className="modal-body">
           <div className="secao">
             <h3><span className="icon">👨‍💻</span> Desenvolvimento</h3>
             <p><strong>Desenvolvedor:</strong> {config.desenvolvedor}</p>
-            <p><strong>Tecnologias:</strong> Next.js + Firebase</p>
+            <p><strong>Tecnologias:</strong> Next.js 14 + Firebase</p>
             <p><strong>IA Utilizada:</strong> {config.usouIA}</p>
           </div>
 
@@ -125,12 +124,6 @@ export default function ModalCreditos({ onClose }) {
           align-items: center;
           z-index: 9999;
           padding: 20px;
-          animation: fadeIn 0.3s ease;
-        }
-
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
         }
 
         .modal-creditos {
@@ -141,12 +134,6 @@ export default function ModalCreditos({ onClose }) {
           max-height: 90vh;
           overflow-y: auto;
           box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-          animation: slideUp 0.5s ease;
-        }
-
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(50px); }
-          to { opacity: 1; transform: translateY(0); }
         }
 
         .modal-header {
@@ -233,11 +220,6 @@ export default function ModalCreditos({ onClose }) {
           border-radius: 6px;
           cursor: pointer;
           font-weight: bold;
-          transition: transform 0.2s;
-        }
-
-        .btn-copiar:hover {
-          transform: scale(1.05);
         }
 
         .modal-footer {
@@ -264,13 +246,7 @@ export default function ModalCreditos({ onClose }) {
           padding: 12px 30px;
           border-radius: 8px;
           cursor: pointer;
-          font-size: 16px;
           font-weight: bold;
-          transition: transform 0.2s;
-        }
-
-        .btn-continuar:hover:not(:disabled) {
-          transform: scale(1.05);
         }
 
         .btn-continuar:disabled {
